@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}用户管理{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-3 mb-4">
+        <div class="list-group">
+            <a href="{{ url_for('admin.dashboard') }}" class="list-group-item list-group-item-action">仪表盘</a>
+            <a href="{{ url_for('admin.user_manage') }}" class="list-group-item list-group-item-action active">用户管理</a>
+            <a href="{{ url_for('admin.detection_records') }}" class="list-group-item list-group-item-action">识别记录</a>
+        </div>
+    </div>
+    
+    <div class="col-md-9">
+        <h2>用户管理</h2>
+        <table class="table table-striped mt-3">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>用户名</th>
+                    <th>邮箱</th>
+                    <th>角色</th>
+                    <th>状态</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users.items %}
+                <tr>
+                    <td>{{ user.id }}</td>
+                    <td>{{ user.username }}</td>
+                    <td>{{ user.email }}</td>
+                    <td>{{ '管理员' if user.is_admin == 1 else '用户' }}</td>
+                    <td>
+                        <span class="badge bg-{{ 'success' if user.status == 1 else 'danger' }}">
+                            {{ '活跃' if user.status == 1 else '禁用' }}
+                        </span>
+                    </td>
+                    <td>
+                        <form action="{{ url_for('admin.update_user') }}" method="POST" style="display:inline;">
+                            <input type="hidden" name="user_id" value="{{ user.id }}">
+                            <button type="submit" name="action" value="toggle_status" class="btn btn-sm btn-outline-warning">
+                                {{ '禁用' if user.status == 1 else '启用' }}
+                            </button>
+                            <button type="submit" name="action" value="toggle_admin" class="btn btn-sm btn-outline-info">
+                                {{ '取消管理员' if user.is_admin == 1 else '设为管理员' }}
+                            </button>
+                            <button type="submit" name="action" value="delete" class="btn btn-sm btn-outline-danger" onclick="return confirm('确定要删除吗？')">删除</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        <!-- Pagination -->
+        <nav>
+            <ul class="pagination">
+                {% if users.has_prev %}
+                    <li class="page-item"><a class="page-link" href="{{ url_for('admin.user_manage', page=users.prev_num) }}">上一页</a></li>
+                {% endif %}
+                <li class="page-item disabled"><span class="page-link">第 {{ users.page }} 页 / 共 {{ users.pages }} 页</span></li>
+                {% if users.has_next %}
+                    <li class="page-item"><a class="page-link" href="{{ url_for('admin.user_manage', page=users.next_num) }}">下一页</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+</div>
+{% endblock %}

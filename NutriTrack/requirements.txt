@@ -1,0 +1,7 @@
+Flask
+Flask-SQLAlchemy
+Flask-Login
+pymysql
+ultralytics
+# requests # implicitly used
+# pillow # implicitly used

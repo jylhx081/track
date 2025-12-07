@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}识别记录{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-3 mb-4">
+        <div class="list-group">
+            <a href="{{ url_for('admin.dashboard') }}" class="list-group-item list-group-item-action">仪表盘</a>
+            <a href="{{ url_for('admin.user_manage') }}" class="list-group-item list-group-item-action">用户管理</a>
+            <a href="{{ url_for('admin.detection_records') }}" class="list-group-item list-group-item-action active">识别记录</a>
+        </div>
+    </div>
+    
+    <div class="col-md-9">
+        <h2>识别记录</h2>
+        <table class="table table-striped mt-3">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>用户 ID</th>
+                    <th>餐盘 ID</th>
+                    <th>时间</th>
+                    <th>重量</th>
+                    <th>识别物品</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in records.items %}
+                <tr>
+                    <td>{{ record.id }}</td>
+                    <td>{{ record.user_id }}</td>
+                    <td>{{ record.plate_id }}</td>
+                    <td>{{ record.detect_time }}</td>
+                    <td>{{ record.current_weight }}</td>
+                    <td>
+                        {% for obj in record.get_detected_objects() %}
+                            <span class="badge bg-secondary">{{ obj.dish_name }}</span>
+                        {% endfor %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        <!-- Pagination -->
+        <nav>
+            <ul class="pagination">
+                {% if records.has_prev %}
+                    <li class="page-item"><a class="page-link" href="{{ url_for('admin.detection_records', page=records.prev_num) }}">上一页</a></li>
+                {% endif %}
+                <li class="page-item disabled"><span class="page-link">第 {{ records.page }} 页 / 共 {{ records.pages }} 页</span></li>
+                {% if records.has_next %}
+                    <li class="page-item"><a class="page-link" href="{{ url_for('admin.detection_records', page=records.next_num) }}">下一页</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+</div>
+{% endblock %}

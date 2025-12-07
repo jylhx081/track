@@ -1,0 +1,330 @@
+{% extends "base.html" %}
+
+{% block title %}用餐追踪{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2 class="mb-3"><i class="fas fa-utensils me-2"></i>用餐追踪</h2>
+    </div>
+</div>
+
+<!-- Meal Monitor Section (Matches Figure 1) -->
+<div class="card mb-5">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+        <h5 class="mb-0 fw-bold">取餐监控</h5>
+        <div class="d-flex align-items-center">
+            <span class="me-3">状态: <span class="text-success fw-bold">正在取餐</span></span>
+            <button class="btn btn-outline-secondary btn-sm" id="pauseBtn">暂停取餐</button>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <!-- Left: Weight Log -->
+            <div class="col-md-4 border-end">
+                <h6 class="text-muted mb-3">重量变化记录</h6>
+                <div class="list-group list-group-flush" id="weightLog" style="height: 300px; overflow-y: auto;">
+                    <!-- Logs will be populated here -->
+                    <div class="d-flex justify-content-between py-2 border-bottom">
+                        <span class="text-muted">12:05</span>
+                        <span class="text-success fw-bold">+120g</span>
+                    </div>
+                    <div class="d-flex justify-content-between py-2 border-bottom">
+                        <span class="text-muted">12:07</span>
+                        <span class="text-success fw-bold">+80g</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Right: Real-time Chart -->
+            <div class="col-md-8">
+                <h6 class="text-muted mb-3">实时重量图表</h6>
+                <div style="height: 300px;">
+                    <canvas id="weightChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <div class="text-center mt-4">
+            <button class="btn btn-success btn-lg px-5" id="finishMealBtn">
+                <i class="fas fa-check-circle me-2"></i>完成取餐
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Dish Detection Section -->
+<div class="card mb-4">
+    <div class="card-header"><i class="fas fa-camera me-2"></i>菜品识别与营养计算</div>
+    <div class="card-body">
+        
+        <ul class="nav nav-tabs mb-3" id="detectionMethod" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="upload-tab" data-bs-toggle="tab" data-bs-target="#upload" type="button" role="tab">上传图片</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="camera-tab" data-bs-toggle="tab" data-bs-target="#camera" type="button" role="tab">使用摄像头</button>
+            </li>
+        </ul>
+
+        <div class="tab-content mb-4" id="detectionMethodContent">
+            <!-- Upload Tab -->
+            <div class="tab-pane fade show active" id="upload" role="tabpanel">
+                <div class="mb-3">
+                    <input type="file" class="form-control" id="dishImage" accept="image/*">
+                </div>
+                <button class="btn btn-primary" onclick="detectDish('upload')">识别菜品</button>
+            </div>
+            
+            <!-- Camera Tab -->
+            <div class="tab-pane fade" id="camera" role="tabpanel">
+                <div class="text-center mb-3">
+                    <video id="video" width="100%" style="max-width: 500px; border-radius: 8px; display:none;" autoplay></video>
+                    <canvas id="canvas" style="display:none;"></canvas>
+                    <div id="cameraPlaceholder" class="bg-light p-5 rounded mb-3" style="cursor: pointer;" onclick="startCamera()">
+                        <i class="fas fa-camera fa-3x text-muted"></i>
+                        <p class="mt-2 text-muted">点击开启摄像头</p>
+                    </div>
+                    <button class="btn btn-primary mt-2" id="captureBtn" style="display:none;" onclick="captureAndDetect()">拍照并识别</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Area -->
+        <div id="detectionResults" style="display:none;">
+            <h5 class="border-bottom pb-2 mb-3">识别结果</h5>
+            
+            <div class="table-responsive">
+                <table class="table align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>菜品名称</th>
+                            <th>重量 (g)</th>
+                            <th>置信度</th>
+                            <th>热量 (kcal)</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsTable"></tbody>
+                </table>
+            </div>
+            
+            <div class="row mt-4">
+                <div class="col-md-6">
+                    <div class="card bg-light border-0">
+                        <div class="card-body">
+                            <h5 class="card-title text-success mb-3">营养总览</h5>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>总热量:</span>
+                                <span class="fw-bold"><span id="totalCal">0</span> kcal</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>蛋白质:</span>
+                                <span class="fw-bold"><span id="totalProt">0</span> g</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>脂肪:</span>
+                                <span class="fw-bold"><span id="totalFat">0</span> g</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>碳水化合物:</span>
+                                <span class="fw-bold"><span id="totalCarb">0</span> g</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 d-flex align-items-end justify-content-end">
+                    <div class="w-100">
+                        <label for="mealType" class="form-label">用餐时段</label>
+                        <select class="form-select mb-3" id="mealType">
+                            <option value="1">早餐</option>
+                            <option value="2">午餐</option>
+                            <option value="3">晚餐</option>
+                        </select>
+                        <button class="btn btn-success w-100 py-2" onclick="saveRecord()">
+                            <i class="fas fa-save me-2"></i>保存记录
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // --- Chart & Monitor Logic ---
+    const ctx = document.getElementById('weightChart').getContext('2d');
+    const weightChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: ['12:00', '12:05', '12:07', '12:09', '12:10'],
+            datasets: [{
+                label: '重量 (g)',
+                data: [0, 120, 200, 250, 350],
+                borderColor: '#4caf50',
+                backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+    });
+
+    // --- Camera Logic ---
+    let videoStream = null;
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const captureBtn = document.getElementById('captureBtn');
+    const cameraPlaceholder = document.getElementById('cameraPlaceholder');
+
+    async function startCamera() {
+        try {
+            videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+            video.srcObject = videoStream;
+            video.style.display = 'block';
+            captureBtn.style.display = 'inline-block';
+            cameraPlaceholder.style.display = 'none';
+        } catch (err) {
+            console.error("Error accessing camera: ", err);
+            alert("无法访问摄像头，请检查权限。");
+        }
+    }
+
+    function stopCamera() {
+        if (videoStream) {
+            videoStream.getTracks().forEach(track => track.stop());
+            video.style.display = 'none';
+            captureBtn.style.display = 'none';
+            cameraPlaceholder.style.display = 'block';
+        }
+    }
+
+    // Stop camera when switching tabs
+    document.getElementById('upload-tab').addEventListener('click', stopCamera);
+
+    function captureAndDetect() {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+        
+        canvas.toBlob(function(blob) {
+            detectDish('camera', blob);
+        }, 'image/jpeg');
+    }
+
+    // --- Detection Logic ---
+    let currentDishes = [];
+    let nutritionTotals = {};
+
+    function detectDish(source, blob = null) {
+        const formData = new FormData();
+        
+        if (source === 'upload') {
+            const fileInput = document.getElementById('dishImage');
+            if (fileInput.files.length === 0) return alert('请选择一张图片');
+            formData.append('image', fileInput.files[0]);
+        } else {
+            if (!blob) return alert('拍照失败');
+            formData.append('image', blob, 'capture.jpg');
+        }
+
+        // Show loading state (optional)
+        
+        fetch("{{ url_for('meal_track.detect_dish') }}", {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                displayResults(data.results);
+                calculateNutrition(data.results);
+            } else {
+                alert(data.message);
+            }
+        })
+        .catch(err => alert('识别请求失败'));
+    }
+
+    function displayResults(results) {
+        const tbody = document.getElementById('resultsTable');
+        tbody.innerHTML = '';
+        currentDishes = results;
+        
+        results.forEach((dish, index) => {
+            const row = `<tr>
+                <td>${dish.dish_name}</td>
+                <td><input type="number" class="form-control form-control-sm" style="width: 80px" value="${dish.weight}" onchange="updateWeight(${index}, this.value)"></td>
+                <td>${(dish.confidence * 100).toFixed(1)}%</td>
+                <td id="cal-${index}">...</td>
+                <td><button class="btn btn-sm btn-outline-danger" onclick="removeDish(${index})"><i class="fas fa-trash"></i></button></td>
+            </tr>`;
+            tbody.innerHTML += row;
+        });
+        
+        document.getElementById('detectionResults').style.display = 'block';
+    }
+
+    function updateWeight(index, value) {
+        currentDishes[index].weight = parseFloat(value);
+        calculateNutrition(currentDishes);
+    }
+
+    function removeDish(index) {
+        currentDishes.splice(index, 1);
+        displayResults(currentDishes);
+        calculateNutrition(currentDishes);
+    }
+
+    function calculateNutrition(dishes) {
+        fetch("{{ url_for('meal_track.calculate_nutrition') }}", {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({dishes: dishes})
+        })
+        .then(response => response.json())
+        .then(data => {
+            nutritionTotals = data.total;
+            
+            // Update individual rows
+            data.details.forEach((detail, idx) => {
+                const calCell = document.getElementById(`cal-${idx}`);
+                if(calCell) calCell.innerText = detail.calories.toFixed(1);
+            });
+
+            // Update totals
+            document.getElementById('totalCal').innerText = data.total.calories.toFixed(1);
+            document.getElementById('totalProt').innerText = data.total.protein.toFixed(1);
+            document.getElementById('totalFat').innerText = data.total.fat.toFixed(1);
+            document.getElementById('totalCarb').innerText = data.total.carb.toFixed(1);
+        });
+    }
+
+    function saveRecord() {
+        const mealType = document.getElementById('mealType').value;
+        
+        fetch("{{ url_for('meal_track.save_meal_record') }}", {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                meal_type: mealType,
+                dish_list: currentDishes,
+                totals: nutritionTotals
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert('保存成功！');
+            window.location.href = "{{ url_for('dashboard.index') }}";
+        });
+    }
+</script>
+{% endblock %}

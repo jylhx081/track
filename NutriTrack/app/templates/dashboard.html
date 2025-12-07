@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block title %}仪表盘{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Left Information Panel -->
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header"><i class="fas fa-user-circle me-2"></i>个人信息</div>
+            <div class="card-body">
+                <p><strong>姓名:</strong> {{ current_user.username }}</p>
+                <p><strong>BMI:</strong> <span class="badge bg-{{ 'success' if bmi < 24 and bmi > 18.5 else 'warning' }}">{{ bmi }}</span></p>
+                <p><strong>基础代谢 (BMR):</strong> {{ bmr }} kcal/天</p>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header"><i class="fas fa-chart-pie me-2"></i>今日摄入统计</div>
+            <div class="card-body">
+                <div class="text-center mb-4">
+                    <h3 class="text-success">{{ today_nutrition.calories | int }}</h3>
+                    <p class="text-muted">已摄入卡路里 (kcal)</p>
+                </div>
+                
+                <p class="mb-1">蛋白质: {{ today_nutrition.protein | round(1) }}g</p>
+                <div class="progress mb-3" style="height: 10px;">
+                    <div class="progress-bar bg-success" role="progressbar" style="width: 50%"></div>
+                </div>
+                
+                <p class="mb-1">脂肪: {{ today_nutrition.fat | round(1) }}g</p>
+                <div class="progress mb-3" style="height: 10px;">
+                    <div class="progress-bar bg-warning" role="progressbar" style="width: 30%"></div>
+                </div>
+                
+                <p class="mb-1">碳水化合物: {{ today_nutrition.carb | round(1) }}g</p>
+                <div class="progress mb-3" style="height: 10px;">
+                    <div class="progress-bar bg-info" role="progressbar" style="width: 60%"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header"><i class="fas fa-bullseye me-2"></i>健康目标</div>
+            <div class="card-body">
+                <form action="{{ url_for('dashboard.update_health_goal') }}" method="POST">
+                    <div class="mb-3">
+                        <textarea class="form-control" name="health_goal" rows="3" placeholder="例如：本周减少糖分摄入...">{{ current_user.health_goal or '' }}</textarea>
+                    </div>
+                    <button type="submit" class="btn btn-sm btn-outline-primary w-100">更新目标</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Functionality Panel -->
+    <div class="col-md-8">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3 class="mb-0"><i class="fas fa-utensils me-2 text-primary"></i>今日用餐记录 ({{ today_date }})</h3>
+            <a href="{{ url_for('meal_track.index') }}" class="btn btn-primary btn-lg shadow-sm">
+                <i class="fas fa-camera me-2"></i>开始用餐追踪
+            </a>
+        </div>
+
+        {% for meal_type, name in [(1, '早餐'), (2, '午餐'), (3, '晚餐')] %}
+        <div class="card mb-3">
+            <div class="card-header bg-white">
+                <strong>{{ name }}</strong>
+            </div>
+            <div class="card-body">
+                {% if meals[meal_type] %}
+                    {% for record in meals[meal_type] %}
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                {% for dish in record.get_dish_list() %}
+                                    <span class="badge bg-light text-dark border me-1">{{ dish.dish_name }} ({{ dish.weight }}g)</span>
+                                {% endfor %}
+                            </div>
+                            <div class="text-end">
+                                <span class="fw-bold text-success">{{ record.total_calorie }} kcal</span>
+                                <div class="text-muted small" style="font-size: 0.8rem;">
+                                    P: {{ record.total_protein }}g | F: {{ record.total_fat }}g | C: {{ record.total_carb }}g
+                                </div>
+                            </div>
+                        </div>
+                        {% if not loop.last %}<hr class="my-2">{% endif %}
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted mb-0 text-center py-2">暂无记录</p>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

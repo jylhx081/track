@@ -89,50 +89,73 @@
                 </div>
             </div>
         </div>
-
+        <div id="uploadedImageContainer" style="display:none; margin-bottom: 20px;">
+            <h5 class="border-bottom pb-2 mb-3">上传图片</h5>
+            <img id="uploadedImage" src="" alt="上传的菜品图片" style="max-width: 500px; border-radius: 8px;"/>
+        </div>
         <!-- Results Area -->
         <div id="detectionResults" style="display:none;">
             <h5 class="border-bottom pb-2 mb-3">识别结果</h5>
-            
-            <div class="table-responsive">
-                <table class="table align-middle">
-                    <thead class="table-light">
-                        <tr>
-                            <th>菜品名称</th>
-                            <th>重量 (g)</th>
-                            <th>置信度</th>
-                            <th>热量 (kcal)</th>
-                            <th>操作</th>
-                        </tr>
-                    </thead>
-                    <tbody id="resultsTable"></tbody>
-                </table>
-            </div>
+
+<div class="table-responsive">
+    <table class="table align-middle table-hover">
+        <thead class="table-light">
+            <tr>
+                <th>菜品名称</th>
+                <th>重量 (g)</th>
+                <th>置信度</th>
+                <th>热量 (kcal)</th>
+                <th>营养占比</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody id="resultsTable"></tbody>
+    </table>
+</div>
             
             <div class="row mt-4">
-                <div class="col-md-6">
-                    <div class="card bg-light border-0">
-                        <div class="card-body">
-                            <h5 class="card-title text-success mb-3">营养总览</h5>
-                            <div class="d-flex justify-content-between mb-2">
-                                <span>总热量:</span>
-                                <span class="fw-bold"><span id="totalCal">0</span> kcal</span>
-                            </div>
-                            <div class="d-flex justify-content-between mb-2">
-                                <span>蛋白质:</span>
-                                <span class="fw-bold"><span id="totalProt">0</span> g</span>
-                            </div>
-                            <div class="d-flex justify-content-between mb-2">
-                                <span>脂肪:</span>
-                                <span class="fw-bold"><span id="totalFat">0</span> g</span>
-                            </div>
-                            <div class="d-flex justify-content-between">
-                                <span>碳水化合物:</span>
-                                <span class="fw-bold"><span id="totalCarb">0</span> g</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+<!-- 替换原有营养总览卡片 (约120-150行) -->
+<div class="col-md-6">
+    <div class="card bg-light border-0">
+        <div class="card-body">
+            <h5 class="card-title text-success mb-3">营养总览</h5>
+
+            <!-- 新增环形进度图 -->
+            <div class="d-flex justify-content-center mb-4">
+                <canvas id="nutritionChart" width="180" height="180"></canvas>
+            </div>
+
+            <!-- 营养数据列表 -->
+            <div class="d-flex justify-content-between mb-2">
+                <span>总热量:</span>
+                <span class="fw-bold"><span id="totalCal">0</span> kcal</span>
+            </div>
+            <div class="d-flex justify-content-between mb-2">
+                <span>蛋白质:</span>
+                <span class="fw-bold"><span id="totalProt">0</span> g</span>
+            </div>
+            <div class="d-flex justify-content-between mb-2">
+                <span>脂肪:</span>
+                <span class="fw-bold"><span id="totalFat">0</span> g</span>
+            </div>
+            <div class="d-flex justify-content-between">
+                <span>碳水化合物:</span>
+                <span class="fw-bold"><span id="totalCarb">0</span> g</span>
+            </div>
+
+            <!-- 食材明细切换按钮 -->
+            <button class="btn btn-sm btn-outline-success mt-3 w-100" onclick="toggleIngredientDetails()">
+                <i class="fas fa-list me-1"></i>查看食材明细
+            </button>
+
+            <!-- 食材明细展示区 (默认隐藏) -->
+            <div id="ingredientDetails" style="margin-top: 15px; display: none; max-height: 200px; overflow-y: auto; border-top: 1px dashed #ddd; padding-top: 10px;">
+                <h6 class="text-muted mb-2">食材营养贡献</h6>
+                <div id="ingredientList"></div>
+            </div>
+        </div>
+    </div>
+</div>
                 <div class="col-md-6 d-flex align-items-end justify-content-end">
                     <div class="w-100">
                         <label for="mealType" class="form-label">用餐时段</label>
@@ -225,34 +248,47 @@
     let nutritionTotals = {};
 
     function detectDish(source, blob = null) {
-        const formData = new FormData();
-        
-        if (source === 'upload') {
-            const fileInput = document.getElementById('dishImage');
-            if (fileInput.files.length === 0) return alert('请选择一张图片');
-            formData.append('image', fileInput.files[0]);
-        } else {
-            if (!blob) return alert('拍照失败');
-            formData.append('image', blob, 'capture.jpg');
-        }
+    const formData = new FormData();
 
-        // Show loading state (optional)
-        
-        fetch("{{ url_for('meal_track.detect_dish') }}", {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                displayResults(data.results);
-                calculateNutrition(data.results);
-            } else {
-                alert(data.message);
-            }
-        })
-        .catch(err => alert('识别请求失败'));
+    if (source === 'upload') {
+        const fileInput = document.getElementById('dishImage');
+        if (fileInput.files.length === 0) return alert('请选择一张图片');
+        formData.append('image', fileInput.files[0]);
+    } else {
+        if (!blob) return alert('拍照失败');
+        formData.append('image', blob, 'capture.jpg');
     }
+
+    fetch("{{ url_for('meal_track.detect_dish') }}", {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            // 显示上传的图片
+            const imgContainer = document.getElementById('uploadedImageContainer');
+            const imgElement = document.getElementById('uploadedImage');
+            imgElement.src = data.image_url;
+            imgContainer.style.display = 'block';
+
+            // 显示检测结果
+            displayResults(data.results);
+            calculateNutrition(data.results);
+        } else {
+            alert(data.message);
+            // 即使出错也显示图片
+            if (data.image_url) {
+                const imgContainer = document.getElementById('uploadedImageContainer');
+                const imgElement = document.getElementById('uploadedImage');
+                imgElement.src = data.image_url;
+                imgContainer.style.display = 'block';
+            }
+        }
+    })
+    .catch(err => alert('识别请求失败'));
+}
+
 
     function displayResults(results) {
         const tbody = document.getElementById('resultsTable');
@@ -309,22 +345,203 @@
     }
 
     function saveRecord() {
-        const mealType = document.getElementById('mealType').value;
-        
-        fetch("{{ url_for('meal_track.save_meal_record') }}", {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                meal_type: mealType,
-                dish_list: currentDishes,
-                totals: nutritionTotals
-            })
+    const mealType = document.getElementById('mealType').value;
+    const saveBtn = document.querySelector('button[onclick="saveRecord()"]');
+    const originalText = saveBtn.innerHTML;
+
+    // 禁用按钮并显示加载
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>保存中...';
+
+    fetch("{{ url_for('meal_track.save_meal_record') }}", {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            meal_type: mealType,
+            dish_list: currentDishes,
+            totals: nutritionTotals
         })
-        .then(response => response.json())
-        .then(data => {
-            alert('保存成功！');
-            window.location.href = "{{ url_for('dashboard.index') }}";
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            // 显示成功动画
+            saveBtn.innerHTML = '<i class="fas fa-check me-2"></i>保存成功';
+            saveBtn.classList.remove('btn-success');
+            saveBtn.classList.add('btn-outline-success');
+
+            // 2秒后跳转回仪表盘
+            setTimeout(() => {
+                window.location.href = "{{ url_for('dashboard.index') }}";
+            }, 2000);
+        } else {
+            alert(data.message);
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = originalText;
+        }
+    })
+    .catch(err => {
+        alert('保存失败，请重试');
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = originalText;
+    });
+}
+
+
+    // 初始化营养环形图
+let nutritionChart = null;
+function initNutritionChart() {
+    const ctx = document.getElementById('nutritionChart').getContext('2d');
+    nutritionChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['蛋白质', '脂肪', '碳水化合物'],
+            datasets: [{
+                data: [0, 0, 0],
+                backgroundColor: ['#28a745', '#ffc107', '#17a2b8'],
+                borderWidth: 0,
+                hoverOffset: 5
+            }]
+        },
+        options: {
+            cutout: '70%',
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        boxWidth: 12,
+                        padding: 15
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.raw || 0;
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+                            return `${label}: ${value}g (${percentage}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// 切换食材明细显示切换
+function toggleIngredientDetails() {
+    const detailsDiv = document.getElementById('ingredientDetails');
+    detailsDiv.style.display = detailsDiv.style.display === 'none' ? 'block' : 'none';
+}
+
+// 更新菜品列表展示（增强版）
+function displayResults(results) {
+    const tbody = document.getElementById('resultsTable');
+    tbody.innerHTML = '';
+    currentDishes = results;
+
+    results.forEach((dish, index) => {
+        // 计算单菜品占比（基于当前总热量）
+        const totalCal = currentDishes.reduce((sum, d) => sum + (d.calories || 0), 0);
+        const percentage = totalCal > 0 ? Math.round((dish.calories / totalCal) * 100) : 0;
+
+        const row = `<tr>
+            <td>
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-utensils text-success me-2"></i>
+                    <span>${dish.dish_name}</span>
+                </div>
+            </td>
+            <td><input type="number" class="form-control form-control-sm" style="width: 80px" value="${dish.weight}" onchange="updateWeight(${index}, this.value)"></td>
+            <td>
+                <div class="d-flex align-items-center">
+                    <span class="me-2">${(dish.confidence * 100).toFixed(1)}%</span>
+                    <div class="progress" style="width: 80px; height: 6px;">
+                        <div class="progress-bar bg-success" style="width: ${(dish.confidence * 100)}%"></div>
+                    </div>
+                </div>
+            </td>
+            <td id="cal-${index}">${dish.calories ? dish.calories.toFixed(1) : '...'}</td>
+            <td>
+                <div class="d-flex align-items-center">
+                    <div class="progress" style="width: 100px; height: 6px;">
+                        <div class="progress-bar bg-primary" style="width: ${percentage}%"></div>
+                    </div>
+                    <span class="ms-2 text-sm">${percentage}%</span>
+                </div>
+            </td>
+            <td><button class="btn btn-sm btn-outline-danger" onclick="removeDish(${index})"><i class="fas fa-trash"></i></button></td>
+        </tr>`;
+        tbody.innerHTML += row;
+    });
+
+    document.getElementById('detectionResults').style.display = 'block';
+}
+
+// 优化营养计算回调（更新图表和明细）
+function calculateNutrition(dishes) {
+    fetch("{{ url_for('meal_track.calculate_nutrition') }}", {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({dishes: dishes})
+    })
+    .then(response => response.json())
+    .then(data => {
+        nutritionTotals = data.total;
+
+        // 更新单个菜品热量
+        data.details.forEach((detail, idx) => {
+            const calCell = document.getElementById(`cal-${idx}`);
+            if(calCell) calCell.innerText = detail.calories.toFixed(1);
         });
-    }
+
+        // 更新总营养数据
+        document.getElementById('totalCal').innerText = data.total.calories.toFixed(1);
+        document.getElementById('totalProt').innerText = data.total.protein.toFixed(1);
+        document.getElementById('totalFat').innerText = data.total.fat.toFixed(1);
+        document.getElementById('totalCarb').innerText = data.total.carb.toFixed(1);
+
+        // 更新环形图
+        if (nutritionChart) {
+            nutritionChart.data.datasets[0].data = [
+                data.total.protein,
+                data.total.fat,
+                data.total.carb
+            ];
+            nutritionChart.update();
+        }
+
+        // 更新食材明细
+        const ingredientList = document.getElementById('ingredientList');
+        ingredientList.innerHTML = '';
+        data.details.forEach(dish => {
+            if (dish.ingredients.length === 0) return;
+
+            const dishGroup = document.createElement('div');
+            dishGroup.className = 'mb-3';
+            dishGroup.innerHTML = `
+                <div class="fw-medium text-success">${dish.dish_name}</div>
+                <ul class="list-group list-group-sm ms-3 mt-1">
+                    ${dish.ingredients.map(ing => `
+                        <li class="list-group-item d-flex justify-content-between p-1">
+                            <small>${ing.name} (${ing.amount}g)</small>
+                            <small class="text-muted">${ing.calories} kcal</small>
+                        </li>
+                    `).join('')}
+                </ul>
+            `;
+            ingredientList.appendChild(dishGroup);
+        });
+    });
+}
+
+// 页面加载时初始化图表
+window.onload = function() {
+    initNutritionChart();
+    // 其他初始化逻辑...
+};
 </script>
 {% endblock %}

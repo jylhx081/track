@@ -6,6 +6,8 @@ from app.models.food import NutritionFacts, Dish, DishIngredient, Ingredient
 from datetime import datetime
 import os
 import json
+from ultralytics import YOLO
+from sqlalchemy import func
 
 meal_track_bp = Blueprint('meal_track', __name__)
 
@@ -32,95 +34,104 @@ def index():
     plate = Plate.query.filter_by(user_id=current_user.id, bind_status=1).first()
     return render_template('meal_track.html', plate=plate)
 
+
 @meal_track_bp.route('/calculate_nutrition', methods=['POST'])
 @login_required
 def calculate_nutrition():
     data = request.get_json()
-    dishes = data.get('dishes', [])
-    
+    dishes = data.get('dishes', [])  # 从前端获取识别的菜品及重量
+
     total_nutrition = {
         'calories': 0,
         'protein': 0,
         'fat': 0,
         'carb': 0
     }
-    
-    details = []
-    
+    details = []  # 存储每个菜品的详细营养成分
+
     for dish_input in dishes:
         dish_name = dish_input.get('dish_name')
-        actual_weight = float(dish_input.get('weight', 0))
-        
+        actual_weight = float(dish_input.get('weight', 0))  # 菜品实际重量（g）
         dish_details = {
             'dish_name': dish_name,
             'calories': 0,
             'protein': 0,
             'fat': 0,
             'carb': 0,
-            'ingredients': []
+            'ingredients': []  # 记录该菜品包含的食材及营养贡献
         }
-        
-        # 1. Get Dish
+
+        # 1. 查询数据库中的菜品信息
         dish = Dish.query.filter_by(name=dish_name).first()
-        if dish:
-            # 2. Get Recipe (DishIngredients)
-            recipe_items = DishIngredient.query.filter_by(dish_id=dish.dish_id).all()
-            
-            # Calculate Total Recipe Weight
-            recipe_total_weight = sum(item.amount_g for item in recipe_items)
-            
-            if recipe_total_weight > 0:
-                # 3. Calculate Scaling Ratio
-                ratio = actual_weight / recipe_total_weight
-                
-                # 4. Calculate Contribution of each ingredient
-                for item in recipe_items:
-                    ingredient = Ingredient.query.get(item.ingredient_id)
-                    nutrition = NutritionFacts.query.get(item.ingredient_id)
-                    
-                    if ingredient and nutrition:
-                        # Actual ingredient amount in this portion
-                        actual_ing_amount = item.amount_g * ratio
-                        
-                        # Contribution = (Per 100g * Actual Amount) / 100
-                        # which simplifies to: Per 100g * (Actual Amount / 100)
-                        factor = actual_ing_amount / 100.0
-                        
-                        ing_cal = nutrition.energy_kcal * factor
-                        ing_prot = nutrition.protein_g * factor
-                        ing_fat = nutrition.fat_g * factor
-                        ing_carb = nutrition.carb_g * factor
-                        
-                        # Add to dish total
-                        dish_details['calories'] += ing_cal
-                        dish_details['protein'] += ing_prot
-                        dish_details['fat'] += ing_fat
-                        dish_details['carb'] += ing_carb
-                        
-                        dish_details['ingredients'].append({
-                            'name': ingredient.ingredient_name,
-                            'amount': round(actual_ing_amount, 1),
-                            'calories': round(ing_cal, 1)
-                        })
-        
-        # Add dish totals to grand total
-        total_nutrition['calories'] += dish_details['calories']
-        total_nutrition['protein'] += dish_details['protein']
-        total_nutrition['fat'] += dish_details['fat']
-        total_nutrition['carb'] += dish_details['carb']
-        
-        # Round dish details
+        if not dish:
+            # 若菜品未在数据库中，跳过计算（可添加提示逻辑）
+            details.append(dish_details)
+            continue
+
+        # 2. 获取菜品配方（食材及标准用量）
+        recipe_items = DishIngredient.query.filter_by(dish_id=dish.dish_id).all()
+        if not recipe_items:
+            details.append(dish_details)
+            continue
+
+        # 3. 计算配方总重量（用于缩放）
+        recipe_total_weight = sum(item.amount_g for item in recipe_items)
+        if recipe_total_weight <= 0:
+            details.append(dish_details)
+            continue
+
+        # 4. 计算缩放比例（实际重量 ÷ 配方总重量）
+        scale_ratio = actual_weight / recipe_total_weight
+
+        # 5. 按比例计算每种食材的实际用量及营养贡献
+        for item in recipe_items:
+            # 查询食材及营养数据
+            ingredient = Ingredient.query.get(item.ingredient_id)
+            nutrition = NutritionFacts.query.get(item.ingredient_id)
+            if not ingredient or not nutrition:
+                continue
+
+            # 食材实际用量 = 标准用量 × 缩放比例
+            actual_ingredient_weight = item.amount_g * scale_ratio
+
+            # 营养成分计算：(每100g含量 × 实际用量) ÷ 100
+            factor = actual_ingredient_weight / 100
+            ing_cal = nutrition.energy_kcal * factor  # 热量（kcal）
+            ing_prot = nutrition.protein_g * factor  # 蛋白质（g）
+            ing_fat = nutrition.fat_g * factor  # 脂肪（g）
+            ing_carb = nutrition.carb_g * factor  # 碳水（g）
+
+            # 累加至菜品总营养
+            dish_details['calories'] += ing_cal
+            dish_details['protein'] += ing_prot
+            dish_details['fat'] += ing_fat
+            dish_details['carb'] += ing_carb
+
+            # 记录该食材的贡献（用于前端展示明细）
+            dish_details['ingredients'].append({
+                'name': ingredient.ingredient_name,
+                'amount': round(actual_ingredient_weight, 1),  # 实际用量（g）
+                'calories': round(ing_cal, 1)
+            })
+
+        # 6. 四舍五入菜品营养数据
         dish_details['calories'] = round(dish_details['calories'], 1)
         dish_details['protein'] = round(dish_details['protein'], 1)
         dish_details['fat'] = round(dish_details['fat'], 1)
         dish_details['carb'] = round(dish_details['carb'], 1)
-        
+
+        # 7. 累加至总营养
+        total_nutrition['calories'] += dish_details['calories']
+        total_nutrition['protein'] += dish_details['protein']
+        total_nutrition['fat'] += dish_details['fat']
+        total_nutrition['carb'] += dish_details['carb']
+
         details.append(dish_details)
-        
+
     return jsonify({
         'status': 'success',
-        'total': total_nutrition,
-        'details': details
+        'total': total_nutrition,  # 所有菜品总营养
+        'details': details  # 每个菜品的详细营养
     })
 
 
@@ -179,97 +190,100 @@ def get_weight_data():
         return jsonify({'weight': plate.current_weight})
     return jsonify({'weight': 0})
 
+
 @meal_track_bp.route('/detect_dish', methods=['POST'])
 @login_required
 def detect_dish():
+    # 1. 检查文件上传
     if 'image' not in request.files:
-        return jsonify({'status': 'error', 'message': 'No image uploaded'})
-        
+        return jsonify({'status': 'error', 'message': '未上传图片'})
+
     file = request.files['image']
     if file.filename == '':
-        return jsonify({'status': 'error', 'message': 'No selected file'})
+        return jsonify({'status': 'error', 'message': '未选择文件'})
 
-    # Save temp file
-    temp_path = os.path.join(current_app.static_folder, 'temp_detect.jpg')
-    file.save(temp_path)
-    
-    model = get_model()
-    detected_dishes = []
-    
-    if model:
-        try:
-            results = model(temp_path)
-            # Parse results
-            # Assuming model returns class names that match Dish names
-            # This is a simplification. In real world, we need class_id to Dish mapping.
-            # Mocking the result parsing for now based on YOLO structure
-            for r in results:
-                for box in r.boxes:
-                    cls_id = int(box.cls[0])
-                    conf = float(box.conf[0])
-                    class_name = model.names[cls_id]
-                    
-                    # Find dish in DB
-                    # dish = Dish.query.filter_by(name=class_name).first()
-                    # For demo purposes, returning the class name
-                    detected_dishes.append({
-                        'dish_name': class_name,
-                        'confidence': round(conf, 2),
-                        'weight': 100 # Mock weight estimation or need input
-                    })
-        except Exception as e:
-            return jsonify({'status': 'error', 'message': str(e)})
-    else:
-        # Mock response if model is missing
-        # Using real dish names from DB for demonstration of nutrition calculation
-        detected_dishes = [
-            {'dish_name': 'Kung Pao Chicken', 'confidence': 0.95, 'weight': 250},
-            {'dish_name': 'Mapo Tofu', 'confidence': 0.88, 'weight': 250}
-        ]
-        
-    return jsonify({'status': 'success', 'results': detected_dishes})
+    # 2. 保存上传的图片（确保路径可写）
+    upload_dir = os.path.join(current_app.static_folder, 'uploads')
+    os.makedirs(upload_dir, exist_ok=True)  # 简化创建目录的逻辑
 
-@meal_track_bp.route('/calculate_nutrition', methods=['POST'])
-@login_required
-def calculate_nutrition():
-    data = request.get_json()
-    dishes = data.get('dishes', [])
-    
-    total_nutrition = {'calories': 0, 'protein': 0, 'fat': 0, 'carb': 0}
-    detailed_nutrition = []
-    
-    for item in dishes:
-        dish_name = item.get('dish_name')
-        weight = float(item.get('weight', 0))
-        
-        # Logic to fetch nutrition based on dish_name and weight
-        # This requires complex mapping between Dish -> Ingredients -> Nutrition
-        # Simplified: Random/Mock data or simple lookup if data existed
-        
-        # Mock calculation
-        nut = {
-            'calories': weight * 1.5,
-            'protein': weight * 0.1,
-            'fat': weight * 0.05,
-            'carb': weight * 0.2
-        }
-        
-        total_nutrition['calories'] += nut['calories']
-        total_nutrition['protein'] += nut['protein']
-        total_nutrition['fat'] += nut['fat']
-        total_nutrition['carb'] += nut['carb']
-        
-        detailed_nutrition.append({
-            'dish_name': dish_name,
-            'weight': weight,
-            **nut
+    # 生成唯一文件名，避免重复
+    filename = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{file.filename.replace(' ', '_')}"
+    save_path = os.path.join(upload_dir, filename)
+
+    # 强制转换为JPG格式（避免模型不支持的格式）
+    try:
+        from PIL import Image
+        img = Image.open(file)
+        img = img.convert('RGB')  # 去除透明通道
+        img.save(save_path, format='JPEG')
+    except Exception as e:
+        # 兼容非图片文件的情况
+        file.save(save_path)
+
+    # 前端访问图片的URL
+    image_url = f"/static/uploads/{filename}"
+
+    # 3. 直接加载模型（跳过get_model，避免全局变量问题）
+    model_path = os.path.join(current_app.static_folder, 'best.pt')
+    if not os.path.exists(model_path):
+        return jsonify({
+            'status': 'error',
+            'message': f'模型文件不存在：{model_path}',
+            'image_url': image_url
         })
-        
+
+    try:
+        model = YOLO(model_path)
+        # 4. 执行识别（使用和测试代码相同的置信度阈值）
+        results = model(save_path, conf=0.3)  # 阈值和测试代码一致
+        detected_items = []
+
+        # 5. 解析识别结果（和测试代码逻辑完全一致）
+        print(f"模型识别到 {len(results[0].boxes)} 个目标")  # 终端打印，方便调试
+        for box in results[0].boxes:
+            cls_id = int(box.cls[0])
+            conf = round(float(box.conf[0]), 2)
+            class_name = model.names[cls_id]
+
+            # 6. 数据库匹配（兼容大小写/空格）
+            target_name = class_name.strip().lower()
+            # 2. 数据库字段用func.lower/func.trim处理
+            dish = Dish.query.filter(
+                func.lower(func.trim(Dish.name)) == target_name
+            ).first()
+
+            # 即使数据库没有匹配，也先返回识别结果（避免前端无数据）
+            detected_items.append({
+                'dish_name': class_name,
+                'confidence': conf,
+                'weight': 100,
+                'has_db_data': True if dish else False  # 标记是否有数据库数据
+            })
+
+    except Exception as e:
+        print(f"识别出错：{str(e)}")  # 终端打印错误
+        return jsonify({
+            'status': 'error',
+            'message': f'识别失败：{str(e)}',
+            'image_url': image_url
+        })
+
+    # 7. 保存检测记录（即使无数据库匹配，也保存原始识别结果）
+    new_record = DetectionRecord(
+        user_id=current_user.id,
+        detected_objects=json.dumps(detected_items),
+        detect_time=datetime.now()
+    )
+    db.session.add(new_record)
+    db.session.commit()
+
+    # 8. 返回结果（确保results不为空）
     return jsonify({
         'status': 'success',
-        'total': total_nutrition,
-        'details': detailed_nutrition
+        'results': detected_items,
+        'image_url': image_url
     })
+
 
 @meal_track_bp.route('/save_meal_record', methods=['POST'])
 @login_required

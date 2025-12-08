@@ -20,6 +20,7 @@ def create_app(config_class=Config):
     from app.routes.dashboard import dashboard_bp
     from app.routes.meal_track import meal_track_bp
     from app.routes.admin import admin_bp
+    
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)

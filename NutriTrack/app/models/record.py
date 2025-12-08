@@ -21,12 +21,6 @@ class DetectionRecord(db.Model):
     detected_objects = db.Column(db.Text) # JSON format
     detect_time = db.Column(db.DateTime, default=datetime.now)
 
-    def set_weight_log(self, data):
-        self.weight_log = json.dumps(data)
-
-    def get_weight_log(self):
-        return json.loads(self.weight_log) if self.weight_log else []
-
     def set_detected_objects(self, data):
         self.detected_objects = json.dumps(data)
 

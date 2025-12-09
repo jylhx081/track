@@ -13,12 +13,102 @@ from app import db
 meal_track_bp = Blueprint('meal_track', __name__, url_prefix='/meal')
 
 # ====================== 用餐追踪首页 ======================
+
+
 @meal_track_bp.route('/')
 @meal_track_bp.route('/index')
 @login_required
 def index():
     """用餐追踪页面"""
     return render_template('meal_track.html')
+
+
+# ====================== 菜品库页面 ======================
+@meal_track_bp.route('/dish_library')
+@login_required
+def dish_library():
+    """菜品库页面"""
+    # 获取所有菜品，按名称排序
+    dishes = Dish.query.order_by(Dish.name).all()
+
+    # 为每个菜品计算营养信息
+    dish_info = []
+    for dish in dishes:
+        # 获取菜品的配料
+        recipe_items = DishIngredient.query.filter_by(
+            dish_id=dish.dish_id).all()
+
+        # 计算每100g的营养成分
+        nutrition_per_100g = {
+            'calories': 0.0,
+            'protein': 0.0,
+            'fat': 0.0,
+            'carb': 0.0
+        }
+
+        if recipe_items:
+            # 计算配方总重量
+            recipe_total_weight = sum(item.amount_g for item in recipe_items)
+
+            if recipe_total_weight > 0:
+                # 计算每100g的营养成分
+                for item in recipe_items:
+                    ingredient = Ingredient.query.get(item.ingredient_id)
+                    nutrition = NutritionFacts.query.get(item.ingredient_id)
+
+                    if ingredient and nutrition:
+                        # 计算该配料在100g菜品中的重量
+                        weight_in_100g = (
+                            item.amount_g / recipe_total_weight) * 100
+
+                        # 计算营养成分（按100g计）
+                        nutrition_per_100g['calories'] += (
+                            nutrition.energy_kcal / 100) * weight_in_100g
+                        nutrition_per_100g['protein'] += (
+                            nutrition.protein_g / 100) * weight_in_100g
+                        nutrition_per_100g['fat'] += (
+                            nutrition.fat_g / 100) * weight_in_100g
+                        nutrition_per_100g['carb'] += (
+                            nutrition.carb_g / 100) * weight_in_100g
+
+                # 四舍五入保留1位小数
+                nutrition_per_100g['calories'] = round(
+                    nutrition_per_100g['calories'], 1)
+                nutrition_per_100g['protein'] = round(
+                    nutrition_per_100g['protein'], 1)
+                nutrition_per_100g['fat'] = round(nutrition_per_100g['fat'], 1)
+                nutrition_per_100g['carb'] = round(
+                    nutrition_per_100g['carb'], 1)
+
+        dish_info.append({
+            'dish': dish,
+            'nutrition': nutrition_per_100g
+        })
+
+    return render_template('dish_library.html', dishes=dish_info)
+
+
+# ====================== 删除用餐记录 ======================
+@meal_track_bp.route('/delete_record/<int:record_id>', methods=['POST'])
+@login_required
+def delete_record(record_id):
+    """删除用餐记录"""
+    try:
+        # 查找记录并验证用户权限
+        record = DietRecord.query.filter_by(
+            id=record_id, user_id=current_user.id).first()
+
+        if not record:
+            return jsonify({'status': 'error', 'message': '记录不存在或无权限删除'})
+
+        # 删除记录
+        db.session.delete(record)
+        db.session.commit()
+
+        return jsonify({'status': 'success', 'message': '记录删除成功'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'status': 'error', 'message': f'删除失败：{str(e)}'})
 
 
 # ====================== 菜品识别接口 ======================
@@ -136,7 +226,8 @@ def calculate_nutrition():
             dish_details.append(single_dish)
             continue
 
-        recipe_items = DishIngredient.query.filter_by(dish_id=dish.dish_id).all()
+        recipe_items = DishIngredient.query.filter_by(
+            dish_id=dish.dish_id).all()
         if not recipe_items:
             dish_details.append(single_dish)
             continue

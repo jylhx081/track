@@ -1,4 +1,4 @@
-<!-- templates/dashboard.html - 添加日期切换和营养信息 -->
+<!-- templates/dashboard.html - 添加健康目标饮食建议和营养推荐 -->
 {% extends "base.html" %}
 
 {% block title %}仪表盘{% endblock %}
@@ -45,7 +45,8 @@
                 <p class="mb-1">蛋白质: {{ today_nutrition.protein | round(1) }}g</p>
                 <div class="progress mb-3" style="height: 10px;">
                     {% if nutrition_needs and nutrition_needs.protein > 0 %}
-                    <div class="progress-bar bg-success" role="progressbar" style="width: {{ nutrition_percents.protein }}%"></div>
+                    {% set protein_percent = nutrition_percents.protein if nutrition_percents else 0 %}
+                    <div class="progress-bar bg-success" role="progressbar" style="width: {{ protein_percent }}%"></div>
                     {% else %}
                     <div class="progress-bar bg-success" role="progressbar" style="width: 0%"></div>
                     {% endif %}
@@ -58,7 +59,8 @@
                 <p class="mb-1">脂肪: {{ today_nutrition.fat | round(1) }}g</p>
                 <div class="progress mb-3" style="height: 10px;">
                     {% if nutrition_needs and nutrition_needs.fat > 0 %}
-                    <div class="progress-bar bg-warning" role="progressbar" style="width: {{ nutrition_percents.fat }}%"></div>
+                    {% set fat_percent = nutrition_percents.fat if nutrition_percents else 0 %}
+                    <div class="progress-bar bg-warning" role="progressbar" style="width: {{ fat_percent }}%"></div>
                     {% else %}
                     <div class="progress-bar bg-warning" role="progressbar" style="width: 0%"></div>
                     {% endif %}
@@ -70,7 +72,8 @@
                 <p class="mb-1">碳水化合物: {{ today_nutrition.carb | round(1) }}g</p>
                 <div class="progress mb-3" style="height: 10px;">
                     {% if nutrition_needs and nutrition_needs.carb > 0 %}
-                    <div class="progress-bar bg-info" role="progressbar" style="width: {{ nutrition_percents.carb }}%"></div>
+                    {% set carb_percent = nutrition_percents.carb if nutrition_percents else 0 %}
+                    <div class="progress-bar bg-info" role="progressbar" style="width: {{ carb_percent }}%"></div>
                     {% else %}
                     <div class="progress-bar bg-info" role="progressbar" style="width: 0%"></div>
                     {% endif %}
@@ -108,6 +111,46 @@
                     </div>
                     <button type="submit" class="btn btn-sm btn-outline-primary w-100">更新目标</button>
                 </form>
+
+                <!-- 健康目标饮食建议 -->
+                {% if current_user.health_goal %}
+                <div class="mt-3 pt-3 border-top">
+                    <h6 class="mb-2">饮食建议：</h6>
+                    {% if current_user.health_goal == '减脂' %}
+                    <ul class="small mb-0 ps-3">
+                        <li>控制总热量摄入，创造热量缺口</li>
+                        <li>增加蛋白质摄入，帮助维持肌肉量</li>
+                        <li>选择低GI碳水化合物，稳定血糖</li>
+                        <li>增加膳食纤维摄入，提高饱腹感</li>
+                        <li>多喝水，促进新陈代谢</li>
+                    </ul>
+                    {% elif current_user.health_goal == '增肌' %}
+                    <ul class="small mb-0 ps-3">
+                        <li>保证充足蛋白质摄入，支持肌肉合成</li>
+                        <li>适量增加碳水化合物，提供能量</li>
+                        <li>合理摄入健康脂肪，维持激素水平</li>
+                        <li>少食多餐，保持营养持续供应</li>
+                        <li>训练后及时补充营养</li>
+                    </ul>
+                    {% elif current_user.health_goal == '更健康' %}
+                    <ul class="small mb-0 ps-3">
+                        <li>均衡摄入各类营养素</li>
+                        <li>增加蔬菜水果摄入</li>
+                        <li>选择全谷物食品</li>
+                        <li>控制加工食品摄入</li>
+                        <li>保持规律作息</li>
+                    </ul>
+                    {% elif current_user.health_goal == '维持体重' %}
+                    <ul class="small mb-0 ps-3">
+                        <li>保持热量摄入与消耗平衡</li>
+                        <li>维持现有饮食结构</li>
+                        <li>定期监测体重变化</li>
+                        <li>保持适量运动</li>
+                        <li>避免暴饮暴食</li>
+                    </ul>
+                    {% endif %}
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -129,20 +172,25 @@
                     </a>
                 </div>
             </div>
-            <a href="{{ url_for('meal_track.index') }}" class="btn btn-primary btn-lg shadow-sm">
-                <i class="fas fa-camera me-2"></i>开始用餐追踪
-            </a>
+            <div>
+                <a href="{{ url_for('meal_track.dish_library') }}" class="btn btn-info btn-lg shadow-sm me-2">
+                    <i class="fas fa-book me-2"></i>菜品库
+                </a>
+                <a href="{{ url_for('meal_track.index') }}" class="btn btn-primary btn-lg shadow-sm">
+                    <i class="fas fa-camera me-2"></i>开始用餐追踪
+                </a>
+            </div>
         </div>
 
         {% for meal_type, name in [(1, '早餐'), (2, '午餐'), (3, '晚餐')] %}
         <div class="card mb-3">
-            <div class="card-header bg-white">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
                 <strong>{{ name }}</strong>
             </div>
             <div class="card-body">
                 {% if meals[meal_type] %}
                 {% for record in meals[meal_type] %}
-                <div class="d-flex justify-content-between align-items-center">
+                <div class="d-flex justify-content-between align-items-center mb-2">
                     <div>
                         {% for dish in record.get_dish_list() %}
                         <span class="badge bg-light text-dark border me-1">{{ dish.dish_name }} ({{ dish.weight
@@ -156,6 +204,12 @@
                         </div>
                     </div>
                 </div>
+                <div class="d-flex justify-content-end mb-2">
+                    <small class="text-muted me-2">记录时间: {{ record.create_time.strftime('%H:%M') }}</small>
+                    <button class="btn btn-sm btn-outline-danger delete-record-btn" data-record-id="{{ record.id }}">
+                        <i class="fas fa-trash me-1"></i>删除
+                    </button>
+                </div>
                 {% if not loop.last %}
                 <hr class="my-2">{% endif %}
                 {% endfor %}
@@ -165,6 +219,204 @@
             </div>
         </div>
         {% endfor %}
+
+        <!-- 营养缺口与推荐卡片 -->
+        <div class="card mb-4">
+            <div class="card-header bg-white">
+                <strong><i class="fas fa-lightbulb me-2 text-warning"></i>营养缺口与推荐</strong>
+            </div>
+            <div class="card-body">
+                {% if nutrition_gaps and (nutrition_gaps.protein > 0 or nutrition_gaps.fat > 0 or nutrition_gaps.carb >
+                0) %}
+                <h6 class="mb-3">今日营养缺口：</h6>
+                <div class="row mb-4">
+                    {% if nutrition_gaps.protein > 0 %}
+                    <div class="col-md-4 mb-2">
+                        <div class="d-flex align-items-center">
+                            <div class="bg-light rounded-circle d-flex align-items-center justify-content-center me-2"
+                                style="width: 30px; height: 30px;">
+                                <span class="text-primary">P</span>
+                            </div>
+                            <span>蛋白质还需 {{ nutrition_gaps.protein }}g</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% if nutrition_gaps.fat > 0 %}
+                    <div class="col-md-4 mb-2">
+                        <div class="d-flex align-items-center">
+                            <div class="bg-light rounded-circle d-flex align-items-center justify-content-center me-2"
+                                style="width: 30px; height: 30px;">
+                                <span class="text-warning">F</span>
+                            </div>
+                            <span>脂肪还需 {{ nutrition_gaps.fat }}g</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% if nutrition_gaps.carb > 0 %}
+                    <div class="col-md-4 mb-2">
+                        <div class="d-flex align-items-center">
+                            <div class="bg-light rounded-circle d-flex align-items-center justify-content-center me-2"
+                                style="width: 30px; height: 30px;">
+                                <span class="text-info">C</span>
+                            </div>
+                            <span>碳水还需 {{ nutrition_gaps.carb }}g</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- 菜品推荐 -->
+                <h6 class="mb-3">推荐菜品：</h6>
+                <div class="row">
+                    {% set next_meal_type = 1 %}
+                    {% if meals[1] %}
+                    {% set next_meal_type = 2 %}
+                    {% endif %}
+                    {% if meals[2] %}
+                    {% set next_meal_type = 3 %}
+                    {% endif %}
+
+                    {% if next_meal_type == 1 %}
+                    {% set meal_name = "早餐" %}
+                    {% elif next_meal_type == 2 %}
+                    {% set meal_name = "午餐" %}
+                    {% else %}
+                    {% set meal_name = "晚餐" %}
+                    {% endif %}
+
+                    <div class="col-12">
+                        <p class="text-muted small mb-2">根据您的营养缺口和{{ meal_name }}需求，推荐以下菜品：</p>
+                    </div>
+
+                    <!-- 根据健康目标和营养缺口推荐菜品 -->
+                    {% if current_user.health_goal == '减脂' %}
+                    {% if nutrition_gaps.protein > 0 %}
+                    <div class="col-md-6 mb-2">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-drumstick-bite text-danger me-2"></i>
+                            <span>鸡胸肉（高蛋白低脂肪）</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-2">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-fish text-info me-2"></i>
+                            <span>清蒸鲈鱼（优质蛋白）</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% if nutrition_gaps.carb > 0 %}
+                    <div class="col-md-6 mb-2">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-seedling text-success me-2"></i>
+                            <span>燕麦粥（低GI碳水）</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% elif current_user.health_goal == '增肌' %}
+                    {% if nutrition_gaps.protein > 0 %}
+                    <div class="col-md-6 mb-2">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-drumstick-bite text-danger me-2"></i>
+                            <span>牛肉（高蛋白高铁）</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-2">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-egg text-warning me-2"></i>
+                            <span>鸡蛋（完整氨基酸）</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% if nutrition_gaps.carb > 0 %}
+                    <div class="col-md-6 mb-2">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-bread-slice text-warning me-2"></i>
+                            <span>全麦面包（复合碳水）</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% else %}
+                    <!-- 默认推荐 -->
+                    {% if nutrition_gaps.protein > 0 %}
+                    <div class="col-md-6 mb-2">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-drumstick-bite text-danger me-2"></i>
+                            <span>瘦肉（优质蛋白）</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% if nutrition_gaps.carb > 0 %}
+                    <div class="col-md-6 mb-2">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-carrot text-success me-2"></i>
+                            <span>糙米（复合碳水）</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% if nutrition_gaps.fat > 0 %}
+                    <div class="col-md-6 mb-2">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-apple-alt text-warning me-2"></i>
+                            <span>坚果（健康脂肪）</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% endif %}
+                </div>
+                {% else %}
+                <div class="text-center py-3">
+                    <i class="fas fa-check-circle text-success fa-2x mb-2"></i>
+                    <p class="mb-0">恭喜！今日营养摄入充足</p>
+                    <p class="text-muted small mb-0">继续保持良好的饮食习惯</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // 删除用餐记录功能
+    document.addEventListener('DOMContentLoaded', function () {
+        // 为所有删除按钮添加事件监听器
+        const deleteButtons = document.querySelectorAll('.delete-record-btn');
+        deleteButtons.forEach(button => {
+            button.addEventListener('click', function () {
+                const recordId = this.getAttribute('data-record-id');
+                const mealCard = this.closest('.card');
+
+                if (confirm('确定要删除这条用餐记录吗？')) {
+                    fetch(`/meal/delete_record/${recordId}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        }
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.status === 'success') {
+                                // 从页面中移除该记录
+                                mealCard.remove();
+                                alert('记录删除成功！');
+
+                                // 如果该餐类下没有更多记录，显示"暂无记录"
+                                const mealBody = mealCard.querySelector('.card-body');
+                                if (mealBody.children.length === 0) {
+                                    mealBody.innerHTML = '<p class="text-muted mb-0 text-center py-2">暂无记录</p>';
+                                }
+                            } else {
+                                alert('删除失败：' + data.message);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            alert('删除请求失败，请稍后重试');
+                        });
+                }
+            });
+        });
+    });
+</script>
 {% endblock %}

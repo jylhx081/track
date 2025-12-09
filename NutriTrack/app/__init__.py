@@ -18,16 +18,14 @@ def create_app(config_class=Config):
     # Import and register blueprints
     from app.routes.auth import auth_bp
     from app.routes.dashboard import dashboard_bp
+    from app.routes.profile import profile_bp
     from app.routes.meal_track import meal_track_bp
     from app.routes.admin import admin_bp
-    
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
+    app.register_blueprint(profile_bp)
     app.register_blueprint(meal_track_bp)
     app.register_blueprint(admin_bp)
-    
-    # Import models to ensure they are registered with SQLAlchemy
-    from app.models import user, food, record
 
     return app

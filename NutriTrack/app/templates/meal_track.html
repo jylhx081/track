@@ -53,96 +53,102 @@
     <div class="card mb-4">
         <div class="card-header"><i class="fas fa-camera me-2"></i>菜品识别与营养计算</div>
         <div class="card-body">
-            <ul class="nav nav-tabs mb-3" id="detectionMethod" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="upload-tab" data-bs-toggle="tab" data-bs-target="#upload"
-                        type="button" role="tab">上传图片</button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="camera-tab" data-bs-toggle="tab" data-bs-target="#camera" type="button"
-                        role="tab">使用摄像头</button>
-                </li>
-            </ul>
-
-            <div class="tab-content mb-4" id="detectionMethodContent">
-                <!-- 上传图片标签页 -->
-                <div class="tab-pane fade show active" id="upload" role="tabpanel">
-                    <div class="mb-3">
-                        <input type="file" class="form-control" id="dishImage" accept="image/*">
-                    </div>
-                    <button class="btn btn-primary" onclick="detectDish('upload')">识别菜品</button>
-                </div>
-
-                <!-- 摄像头标签页 -->
-                <div class="tab-pane fade" id="camera" role="tabpanel">
-                    <div class="text-center mb-3">
-                        <video id="video" width="100%" style="max-width: 500px; border-radius: 8px; display:none;"
-                            autoplay></video>
-                        <canvas id="canvas" style="display:none;"></canvas>
-                        <div id="cameraPlaceholder" class="bg-light p-5 rounded mb-3" style="cursor: pointer;"
-                            onclick="startCamera()">
-                            <i class="fas fa-camera fa-3x text-muted"></i>
-                            <p class="mt-2 text-muted">点击开启摄像头</p>
+            <div class="row">
+                <!-- 左侧：上传/拍照区域 -->
+                <div class="col-md-6">
+                    <h5 class="mb-3">上传餐盘图片</h5>
+                    <div class="text-center mb-4">
+                        <!-- 图片预览区域 -->
+                        <div id="imagePreview" class="border border-dashed border-2 rounded-3 p-4 mb-3" style="height: 300px; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer;">
+                            <i class="fas fa-camera fa-3x text-muted mb-2"></i>
+                            <p class="text-muted">点击拍照或上传图片</p>
+                            <p class="text-xs text-muted">请拍摄清晰、无遮挡的餐盘全景</p>
+                            <input type="file" id="dishImage" accept="image/*" style="display: none;" onchange="previewImage(this)">
+                            
+                            <!-- 摄像头视频区域 -->
+                            <video id="video" width="100%" style="max-width: 400px; border-radius: 8px; display:none;" autoplay></video>
+                            <canvas id="canvas" style="display:none;"></canvas>
                         </div>
-                        <button class="btn btn-primary mt-2" id="captureBtn" style="display:none;"
-                            onclick="captureAndDetect()">拍照并识别</button>
+                        
+                        <!-- 操作按钮 -->
+                        <div class="d-flex justify-content-center gap-3">
+                            <button class="btn btn-outline-primary" id="cameraBtn" onclick="toggleCamera()">
+                                <i class="fas fa-camera me-1"></i>拍照
+                            </button>
+                            <button class="btn btn-outline-secondary" onclick="document.getElementById('dishImage').click()">
+                                <i class="fas fa-upload me-1"></i>上传
+                            </button>
+                        </div>
+                        
+                        <!-- 拍照按钮（仅在摄像头开启时显示） -->
+                        <button class="btn btn-primary mt-3" id="captureBtn" style="display:none;" onclick="captureAndDetect()">
+                            <i class="fas fa-camera me-1"></i>拍摄并识别
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 右侧：识别结果区域 -->
+                <div class="col-md-6">
+                    <h5 class="mb-3">识别结果</h5>
+                    <div id="detectionResults" class="mb-4" style="min-height: 300px;">
+                        <!-- 识别结果将在这里动态生成 -->
+                        <div id="emptyResults" class="text-center text-muted py-5">
+                            <i class="fas fa-search fa-3x mb-2"></i>
+                            <p>暂无识别结果</p>
+                            <p class="text-xs">请上传或拍摄餐盘图片进行识别</p>
+                        </div>
+                        <div id="resultsContainer" style="display: none;">
+                            <!-- 动态生成的菜品卡片 -->
+                        </div>
+                    </div>
+                    
+                    <!-- 确认按钮 -->
+                    <div class="text-center">
+                        <button class="btn btn-success btn-lg" id="confirmResultsBtn" style="display: none;" onclick="showNutritionSummary()">
+                            <i class="fas fa-check me-2"></i>确认识别结果
+                        </button>
                     </div>
                 </div>
             </div>
-
-            <!-- 识别结果区域 -->
-            <div id="detectionResults" style="display:none;">
-                <h5 class="border-bottom pb-2 mb-3">识别结果</h5>
-                <div class="table-responsive">
-                    <table class="table align-middle table-hover">
-                        <thead class="table-light">
-                            <tr>
-                                <th>菜品名称</th>
-                                <th>重量 (g)</th>
-                                <th>置信度</th>
-                                <th>热量 (kcal)</th>
-                                <th>操作</th>
-                            </tr>
-                        </thead>
-                        <tbody id="resultsTable"></tbody>
-                    </table>
-                </div>
-
-                <div class="row mt-4">
-                    <div class="col-md-6">
-                        <div class="card bg-light border-0">
-                            <div class="card-body">
-                                <h5 class="card-title text-success mb-3">营养总览</h5>
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span>总热量:</span>
-                                    <span class="fw-bold"><span id="totalCal">0.0</span> kcal</span>
-                                </div>
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span>蛋白质:</span>
-                                    <span class="fw-bold"><span id="totalProt">0.0</span> g</span>
-                                </div>
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span>脂肪:</span>
-                                    <span class="fw-bold"><span id="totalFat">0.0</span> g</span>
-                                </div>
-                                <div class="d-flex justify-content-between">
-                                    <span>碳水化合物:</span>
-                                    <span class="fw-bold"><span id="totalCarb">0.0</span> g</span>
-                                </div>
+            
+            <!-- 营养总结和保存区域（默认隐藏） -->
+            <div id="nutritionSummary" class="mt-5" style="display: none;">
+                <div class="card bg-light border-0">
+                    <div class="card-body">
+                        <h5 class="card-title text-success mb-4">营养总览</h5>
+                        <div class="row mb-4">
+                            <div class="col-md-3 text-center">
+                                <div class="fs-3 fw-bold text-success"><span id="totalCal">0.0</span> kcal</div>
+                                <div class="text-muted">总热量</div>
+                            </div>
+                            <div class="col-md-3 text-center">
+                                <div class="fs-3 fw-bold"><span id="totalProt">0.0</span> g</div>
+                                <div class="text-muted">蛋白质</div>
+                            </div>
+                            <div class="col-md-3 text-center">
+                                <div class="fs-3 fw-bold"><span id="totalFat">0.0</span> g</div>
+                                <div class="text-muted">脂肪</div>
+                            </div>
+                            <div class="col-md-3 text-center">
+                                <div class="fs-3 fw-bold"><span id="totalCarb">0.0</span> g</div>
+                                <div class="text-muted">碳水化合物</div>
                             </div>
                         </div>
-                    </div>
-                    <div class="col-md-6 d-flex align-items-end justify-content-end">
-                        <div class="w-100">
-                            <label for="mealType" class="form-label">用餐时段</label>
-                            <select class="form-select mb-3" id="mealType">
-                                <option value="1">早餐</option>
-                                <option value="2">午餐</option>
-                                <option value="3">晚餐</option>
-                            </select>
-                            <button class="btn btn-success w-100 py-2" onclick="saveRecord()">
-                                <i class="fas fa-save me-2"></i>保存记录
-                            </button>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label for="mealType" class="form-label">用餐时段</label>
+                                <select class="form-select" id="mealType">
+                                    <option value="1">早餐</option>
+                                    <option value="2">午餐</option>
+                                    <option value="3">晚餐</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 d-flex align-items-end">
+                                <button class="btn btn-success w-100 py-2" onclick="saveRecord()">
+                                    <i class="fas fa-save me-2"></i>保存用餐记录
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -185,19 +191,31 @@
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
     const captureBtn = document.getElementById('captureBtn');
-    const cameraPlaceholder = document.getElementById('cameraPlaceholder');
+    const cameraBtn = document.getElementById('cameraBtn');
+    const imagePreview = document.getElementById('imagePreview');
 
-    // 开启摄像头
-    async function startCamera() {
-        try {
-            videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
-            video.srcObject = videoStream;
-            video.style.display = 'block';
-            captureBtn.style.display = 'inline-block';
-            cameraPlaceholder.style.display = 'none';
-        } catch (err) {
-            alert("无法访问摄像头，请检查权限或确保摄像头未被占用！");
-            console.error("摄像头错误：", err);
+    // 切换摄像头状态
+    async function toggleCamera() {
+        if (videoStream) {
+            // 关闭摄像头
+            stopCamera();
+            cameraBtn.innerHTML = '<i class="fas fa-camera me-1"></i>拍照';
+        } else {
+            // 开启摄像头
+            try {
+                videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = videoStream;
+                video.style.display = 'block';
+                captureBtn.style.display = 'inline-block';
+                cameraBtn.innerHTML = '<i class="fas fa-times me-1"></i>关闭摄像头';
+                
+                // 隐藏默认预览
+                const previewElements = imagePreview.querySelectorAll('i, p');
+                previewElements.forEach(el => el.style.display = 'none');
+            } catch (err) {
+                alert("无法访问摄像头，请检查权限或确保摄像头未被占用！");
+                console.error("摄像头错误：", err);
+            }
         }
     }
 
@@ -207,12 +225,49 @@
             videoStream.getTracks().forEach(track => track.stop());
             video.style.display = 'none';
             captureBtn.style.display = 'none';
-            cameraPlaceholder.style.display = 'block';
+            
+            // 恢复默认预览
+            const previewElements = imagePreview.querySelectorAll('i, p');
+            previewElements.forEach(el => el.style.display = 'block');
         }
     }
 
-    // 切换到上传标签页时关闭摄像头
-    document.getElementById('upload-tab').addEventListener('click', stopCamera);
+    // 图片预览
+    function previewImage(input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            
+            // 关闭摄像头（如果开启）
+            stopCamera();
+            cameraBtn.innerHTML = '<i class="fas fa-camera me-1"></i>拍照';
+            
+            // 隐藏默认预览
+            const previewElements = imagePreview.querySelectorAll('i, p');
+            previewElements.forEach(el => el.style.display = 'none');
+            
+            // 创建预览图片
+            reader.onload = function(e) {
+                // 移除之前的预览图片
+                const existingImg = imagePreview.querySelector('img');
+                if (existingImg) {
+                    existingImg.remove();
+                }
+                
+                const img = document.createElement('img');
+                img.src = e.target.result;
+                img.style.maxWidth = '100%';
+                img.style.maxHeight = '280px';
+                img.style.objectFit = 'contain';
+                img.style.borderRadius = '8px';
+                imagePreview.appendChild(img);
+                
+                // 识别菜品
+                detectDish('upload');
+            }
+            
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
 
     // 拍照并识别
     function captureAndDetect() {
@@ -265,8 +320,6 @@
                 if (data.status === 'success') {
                     // 渲染识别结果
                     displayResults(data.results);
-                    // 立即计算营养数据
-                    calculateNutrition(data.results);
                 } else {
                     alert('菜品识别失败：' + data.message);
                 }
@@ -277,39 +330,68 @@
             });
     }
 
-    // 渲染识别结果到表格
+    // 渲染识别结果到卡片
     function displayResults(results) {
-        const tbody = document.getElementById('resultsTable');
-        tbody.innerHTML = '';
+        const resultsContainer = document.getElementById('resultsContainer');
+        resultsContainer.innerHTML = '';
         currentDishes = results;
 
-        // 遍历结果生成表格行
+        // 遍历结果生成卡片
         results.forEach((dish, index) => {
-            const row = `
-                <tr>
-                    <td>${dish.dish_name}</td>
-                    <td>
-                        <input type="number" 
-                               class="form-control form-control-sm" 
-                               style="width: 80px" 
-                               value="${dish.weight}" 
-                               min="1"
-                               onchange="updateWeight(${index}, this.value)">
-                    </td>
-                    <td>${(dish.confidence * 100).toFixed(1)}%</td>
-                    <td id="cal-${index}">0.0</td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-danger" onclick="removeDish(${index})">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </td>
-                </tr>
+            // 根据菜品类型选择图标
+            let iconClass = '';
+            let iconColor = '';
+            if (dish.dish_name.includes('米饭') || dish.dish_name.includes('面') || dish.dish_name.includes('粉')) {
+                iconClass = 'fas fa-bread-slice';
+                iconColor = 'text-warning';
+            } else if (dish.dish_name.includes('菜') || dish.dish_name.includes('汤')) {
+                iconClass = 'fas fa-leaf';
+                iconColor = 'text-success';
+            } else if (dish.dish_name.includes('肉') || dish.dish_name.includes('鱼') || dish.dish_name.includes('蛋')) {
+                iconClass = 'fas fa-drumstick-bite';
+                iconColor = 'text-danger';
+            } else {
+                iconClass = 'fas fa-utensils';
+                iconColor = 'text-info';
+            }
+
+            const card = `
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center">
+                                <div class="bg-light rounded-full p-2 me-3">
+                                    <i class="${iconClass} ${iconColor} fa-lg"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-0">${dish.dish_name}</h6>
+                                    <div class="text-xs text-muted">置信度 ${(dish.confidence * 100).toFixed(1)}%</div>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="input-group" style="width: 120px;">
+                                    <input type="number" 
+                                           class="form-control form-control-sm" 
+                                           value="${dish.weight}" 
+                                           min="1"
+                                           onchange="updateWeight(${index}, this.value)">
+                                    <span class="input-group-text">g</span>
+                                </div>
+                                <button class="btn btn-sm btn-outline-danger" onclick="removeDish(${index})">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             `;
-            tbody.innerHTML += row;
+            resultsContainer.innerHTML += card;
         });
 
         // 显示结果区域
-        document.getElementById('detectionResults').style.display = 'block';
+        document.getElementById('emptyResults').style.display = 'none';
+        resultsContainer.style.display = 'block';
+        document.getElementById('confirmResultsBtn').style.display = 'inline-block';
     }
 
     // 更新菜品重量
@@ -319,21 +401,40 @@
         if (isNaN(weight) || weight <= 0) {
             alert('重量必须是大于0的数字！');
             // 恢复原数值
-            document.querySelectorAll('#resultsTable input')[index].value = currentDishes[index].weight;
+            const inputs = document.querySelectorAll('#resultsContainer input');
+            if (inputs[index]) {
+                inputs[index].value = currentDishes[index].weight;
+            }
             return;
         }
-        // 更新重量并重新计算营养
+        // 更新重量
         currentDishes[index].weight = weight;
-        calculateNutrition(currentDishes);
     }
 
     // 删除菜品
     function removeDish(index) {
         currentDishes.splice(index, 1);
-        // 重新渲染表格
+        // 重新渲染卡片
         displayResults(currentDishes);
-        // 重新计算营养
+        
+        // 如果没有菜品了，隐藏确认按钮
+        if (currentDishes.length === 0) {
+            document.getElementById('confirmResultsBtn').style.display = 'none';
+            document.getElementById('emptyResults').style.display = 'flex';
+            document.getElementById('resultsContainer').style.display = 'none';
+        }
+    }
+
+    // 显示营养总结
+    function showNutritionSummary() {
+        // 计算营养数据
         calculateNutrition(currentDishes);
+        
+        // 显示营养总结区域
+        document.getElementById('nutritionSummary').style.display = 'block';
+        
+        // 滚动到营养总结区域
+        document.getElementById('nutritionSummary').scrollIntoView({ behavior: 'smooth' });
     }
 
     // 计算营养数据（调用后端接口）
@@ -352,15 +453,7 @@
                     return;
                 }
 
-                // 1. 更新表格中每个菜品的热量
-                data.details.forEach((dish, idx) => {
-                    const calCell = document.getElementById(`cal-${idx}`);
-                    if (calCell) {
-                        calCell.innerText = dish.calories.toFixed(1);
-                    }
-                });
-
-                // 2. 更新总营养数据
+                // 更新总营养数据
                 nutritionTotals = data.total;
                 document.getElementById('totalCal').innerText = nutritionTotals.calories.toFixed(1);
                 document.getElementById('totalProt').innerText = nutritionTotals.protein.toFixed(1);
@@ -398,9 +491,25 @@
                     // 重置页面状态
                     currentDishes = [];
                     nutritionTotals = { calories: 0.0, protein: 0.0, fat: 0.0, carb: 0.0 };
-                    document.getElementById('detectionResults').style.display = 'none';
+                    
+                    // 重置UI
+                    document.getElementById('emptyResults').style.display = 'flex';
+                    document.getElementById('resultsContainer').style.display = 'none';
+                    document.getElementById('confirmResultsBtn').style.display = 'none';
+                    document.getElementById('nutritionSummary').style.display = 'none';
+                    
+                    // 重置图片上传
                     document.getElementById('dishImage').value = '';
+                    
+                    // 恢复默认预览
                     stopCamera();
+                    cameraBtn.innerHTML = '<i class="fas fa-camera me-1"></i>拍照';
+                    const previewElements = imagePreview.querySelectorAll('i, p');
+                    previewElements.forEach(el => el.style.display = 'block');
+                    const existingImg = imagePreview.querySelector('img');
+                    if (existingImg) {
+                        existingImg.remove();
+                    }
                 } else {
                     alert('保存失败：' + data.message);
                 }

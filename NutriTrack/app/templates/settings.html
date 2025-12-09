@@ -1,0 +1,40 @@
+<!-- templates/settings.html - 用户设置页面 -->
+{% extends "base.html" %}
+{% block title %}设置{% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">设置</h1>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card shadow mb-4">
+                <div class="card-body p-4">
+                    <h5 class="card-title mb-4">修改密码</h5>
+                    <form method="POST" action="{{ url_for('profile.change_password') }}">
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="current_password" class="form-label">当前密码</label>
+                                <input type="password" class="form-control" id="current_password"
+                                    name="current_password" required>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="new_password" class="form-label">新密码</label>
+                                <input type="password" class="form-control" id="new_password" name="new_password"
+                                    required>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="confirm_password" class="form-label">确认新密码</label>
+                                <input type="password" class="form-control" id="confirm_password"
+                                    name="confirm_password" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">修改密码</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

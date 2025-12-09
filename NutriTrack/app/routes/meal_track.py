@@ -10,8 +10,7 @@ from app.models.food import NutritionFacts, Dish, DishIngredient, Ingredient
 from app import db
 
 # 创建蓝图
-meal_track_bp = Blueprint('meal_track', __name__)
-
+meal_track_bp = Blueprint('meal_track', __name__, url_prefix='/meal')
 
 # ====================== 用餐追踪首页 ======================
 @meal_track_bp.route('/')

@@ -1,0 +1,191 @@
+<!-- templates/profile.html - 重新设计个人中心页面 -->
+{% extends "base.html" %}
+{% block title %}个人中心{% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">个人中心</h1>
+    </div>
+
+    <!-- 用户信息卡片 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-body p-4">
+                    <div class="row align-items-center">
+                        <div class="col-md-2 text-center mb-3 mb-md-0">
+                            <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center mx-auto"
+                                style="width: 80px; height: 80px; font-size: 32px;">
+                                <i class="fas fa-user"></i>
+                            </div>
+                        </div>
+                        <div class="col-md-10">
+                            <h5 class="card-title mb-1">{{ current_user.username }}</h5>
+                            <p class="text-muted mb-2">ID: {{ current_user.id }}</p>
+                            {% if current_user.bmr %}
+                            <p class="mb-1"><strong>基础代谢 (BMR):</strong> {{ current_user.bmr }} kcal/天</p>
+                            {% endif %}
+                            {% if current_user.bmi %}
+                            <p class="mb-0"><strong>BMI:</strong> {{ current_user.bmi }}
+                                {% if current_user.bmi < 18.5 %} <span class="badge bg-warning">偏瘦</span>
+                                    {% elif 18.5 <= current_user.bmi < 24 %} <span class="badge bg-success">正常</span>
+                                        {% elif 24 <= current_user.bmi < 28 %} <span class="badge bg-warning">超重</span>
+                                            {% else %}
+                                            <span class="badge bg-danger">肥胖</span>
+                                            {% endif %}
+                            </p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 信息卡片 -->
+    <div class="row">
+        <!-- 个人信息卡片 -->
+        <div class="col-md-6 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-body p-4">
+                    <h5 class="card-title mb-4">个人信息</h5>
+                    <form method="POST" action="{{ url_for('profile.update_info') }}">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="age" class="form-label">年龄</label>
+                                <input type="number" class="form-control" id="age" name="age"
+                                    value="{{ current_user.age if current_user.age else '' }}" min="1">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="gender" class="form-label">性别</label>
+                                <select class="form-select" id="gender" name="gender">
+                                    <option value="">请选择</option>
+                                    <option value="男" {{ 'selected' if current_user.gender=='男' else '' }}>男</option>
+                                    <option value="女" {{ 'selected' if current_user.gender=='女' else '' }}>女</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="height" class="form-label">身高 (cm)</label>
+                                <input type="number" class="form-control" id="height" name="height"
+                                    value="{{ current_user.height if current_user.height else '' }}" min="50" max="250"
+                                    step="0.1">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="weight" class="form-label">体重 (kg)</label>
+                                <input type="number" class="form-control" id="weight" name="weight"
+                                    value="{{ current_user.weight if current_user.weight else '' }}" min="20" max="200"
+                                    step="0.1">
+                            </div>
+                        </div>
+
+                        <!-- 运动频率移到个人信息中 -->
+                        <div class="mb-3">
+                            <label for="exercise_frequency" class="form-label">运动频率</label>
+                            <select class="form-select" id="exercise_frequency" name="exercise_frequency">
+                                <option value="">请选择</option>
+                                <option value="久坐不动" {{ 'selected' if current_user.exercise_frequency=='久坐不动' else ''
+                                    }}>久坐不动</option>
+                                <option value="每周1-2次" {{ 'selected' if current_user.exercise_frequency=='每周1-2次'
+                                    else '' }}>每周1-2次</option>
+                                <option value="每周3-4次" {{ 'selected' if current_user.exercise_frequency=='每周3-4次'
+                                    else '' }}>每周3-4次</option>
+                                <option value="每周5-6次" {{ 'selected' if current_user.exercise_frequency=='每周5-6次'
+                                    else '' }}>每周5-6次</option>
+                                <option value="每天" {{ 'selected' if current_user.exercise_frequency=='每天' else '' }}>每天
+                                </option>
+                            </select>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">保存个人信息</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- 饮食习惯卡片 -->
+        <div class="col-md-6 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-body p-4">
+                    <h5 class="card-title mb-4">饮食习惯</h5>
+                    <form method="POST" action="{{ url_for('profile.update_eating_habits') }}">
+                        <div class="mb-3">
+                            <label for="dietary_preference" class="form-label">饮食偏好</label>
+                            <select class="form-select" id="dietary_preference" name="dietary_preference">
+                                <option value="">请选择</option>
+                                <option value="正常饮食" {{ 'selected' if current_user.dietary_preference=='正常饮食' else ''
+                                    }}>正常饮食</option>
+                                <option value="素食" {{ 'selected' if current_user.dietary_preference=='素食' else '' }}>素食
+                                </option>
+                                <option value="低碳水" {{ 'selected' if current_user.dietary_preference=='低碳水' else '' }}>
+                                    低碳水</option>
+                                <option value="高蛋白" {{ 'selected' if current_user.dietary_preference=='高蛋白' else '' }}>
+                                    高蛋白</option>
+                                <option value="低脂肪" {{ 'selected' if current_user.dietary_preference=='低脂肪' else '' }}>
+                                    低脂肪</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="allergies" class="form-label">过敏食物</label>
+                            <textarea class="form-control" id="allergies" name="allergies" rows="3"
+                                placeholder="请输入过敏食物，多个以逗号分隔">{{ current_user.allergies if current_user.allergies else '' }}</textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="favorite_foods" class="form-label">喜爱的食物</label>
+                            <textarea class="form-control" id="favorite_foods" name="favorite_foods" rows="3"
+                                placeholder="请输入喜爱的食物，多个以逗号分隔">{{ current_user.favorite_foods if current_user.favorite_foods else '' }}</textarea>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">保存饮食习惯</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- 健康目标卡片 -->
+        <div class="col-md-12 mb-4">
+            <div class="card shadow">
+                <div class="card-body p-4">
+                    <h5 class="card-title mb-4">健康目标</h5>
+                    <form method="POST" action="{{ url_for('profile.update_health_goal') }}">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="health_goal" class="form-label">健康目标</label>
+                                <select class="form-select" id="health_goal" name="health_goal">
+                                    <option value="">请选择</option>
+                                    <option value="减脂" {{ 'selected' if current_user.health_goal=='减脂' else '' }}>减脂
+                                    </option>
+                                    <option value="增肌" {{ 'selected' if current_user.health_goal=='增肌' else '' }}>增肌
+                                    </option>
+                                    <option value="更健康" {{ 'selected' if current_user.health_goal=='更健康' else '' }}>更健康
+                                    </option>
+                                    <option value="维持体重" {{ 'selected' if current_user.health_goal=='维持体重' else '' }}>
+                                        维持体重</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="target_weight" class="form-label">目标体重 (kg)</label>
+                                <input type="number" class="form-control" id="target_weight" name="target_weight"
+                                    value="{{ current_user.target_weight if current_user.target_weight else '' }}"
+                                    min="20" max="200" step="0.1">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="goal_deadline" class="form-label">目标期限</label>
+                            <input type="date" class="form-control" id="goal_deadline" name="goal_deadline"
+                                value="{{ current_user.goal_deadline.strftime('%Y-%m-%d') if current_user.goal_deadline else '' }}">
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">保存健康目标</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

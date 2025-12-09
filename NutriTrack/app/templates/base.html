@@ -1,5 +1,7 @@
+<!-- templates/base.html - 添加用户下拉菜单 -->
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -16,22 +18,31 @@
             --navbar-start: #4caf50;
             --navbar-end: #66bb6a;
         }
-        body { 
-            background-color: var(--bg-color); 
+
+        body {
+            background-color: var(--bg-color);
             color: var(--text-color);
             font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
         }
-        .navbar { 
-            background: linear-gradient(to right, var(--navbar-start), var(--navbar-end)) !important; 
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+
+        .navbar {
+            background: linear-gradient(to right, var(--navbar-start), var(--navbar-end)) !important;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
-        .navbar-brand, .nav-link { color: white !important; font-weight: 500; }
-        .card { 
-            border: none; 
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05); 
+
+        .navbar-brand,
+        .nav-link {
+            color: white !important;
+            font-weight: 500;
+        }
+
+        .card {
+            border: none;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
             border-radius: 12px;
             margin-bottom: 20px;
         }
+
         .card-header {
             background-color: white;
             border-bottom: 1px solid #eee;
@@ -39,32 +50,52 @@
             color: var(--primary-color);
             border-radius: 12px 12px 0 0 !important;
         }
-        .btn-primary { 
-            background-color: var(--primary-color); 
-            border-color: var(--primary-color); 
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
         }
-        .btn-primary:hover { 
-            background-color: #43a047; 
-            border-color: #43a047; 
+
+        .btn-primary:hover {
+            background-color: #43a047;
+            border-color: #43a047;
         }
+
         .btn-outline-primary {
             color: var(--primary-color);
             border-color: var(--primary-color);
         }
+
         .btn-outline-primary:hover {
             background-color: var(--primary-color);
             color: white;
         }
-        .badge-primary { background-color: var(--primary-color); }
-        
+
+        .badge-primary {
+            background-color: var(--primary-color);
+        }
+
         /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #f1f1f1; }
-        ::-webkit-scrollbar-thumb { background: #c1e1c1; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #a5d6a7; }
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #c1e1c1;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a5d6a7;
+        }
     </style>
     {% block styles %}{% endblock %}
 </head>
+
 <body>
     <nav class="navbar navbar-expand-lg mb-4">
         <div class="container">
@@ -77,20 +108,36 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
                     {% if current_user.is_authenticated %}
-                        <li class="nav-item"><a class="nav-link" href="{{ url_for('dashboard.index') }}">仪表盘</a></li>
-                        <li class="nav-item"><a class="nav-link" href="{{ url_for('meal_track.index') }}">用餐追踪</a></li>
-                        {% if current_user.is_admin == 1 %}
-                            <li class="nav-item"><a class="nav-link" href="{{ url_for('admin.dashboard') }}">管理后台</a></li>
-                        {% endif %}
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('dashboard.index') }}">仪表盘</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('profile.index') }}">个人中心</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('meal_track.index') }}">用餐追踪</a></li>
+                    {% if current_user.is_admin == 1 %}
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('admin.dashboard') }}">管理后台</a></li>
+                    {% endif %}
                     {% endif %}
                 </ul>
                 <ul class="navbar-nav">
                     {% if current_user.is_authenticated %}
-                        <li class="nav-item"><span class="nav-link">欢迎, {{ current_user.username }}</span></li>
-                        <li class="nav-item"><a class="nav-link" href="{{ url_for('auth.logout') }}">退出</a></li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button"
+                            data-bs-toggle="dropdown" aria-expanded="false">
+                            欢迎, {{ current_user.username }}
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
+                            <li><a class="dropdown-item" href="{{ url_for('profile.index') }}"><i
+                                        class="fas fa-user me-2"></i>个人中心</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('profile.settings') }}"><i
+                                        class="fas fa-cog me-2"></i>设置</a></li>
+                            <li>
+                                <hr class="dropdown-divider">
+                            </li>
+                            <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}"><i
+                                        class="fas fa-sign-out-alt me-2"></i>退出</a></li>
+                        </ul>
+                    </li>
                     {% else %}
-                        <li class="nav-item"><a class="nav-link" href="{{ url_for('auth.login') }}">登录</a></li>
-                        <li class="nav-item"><a class="nav-link" href="{{ url_for('auth.register') }}">注册</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('auth.login') }}">登录</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('auth.register') }}">注册</a></li>
                     {% endif %}
                 </ul>
             </div>
@@ -99,20 +146,21 @@
 
     <div class="container">
         {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                {% endfor %}
-            {% endif %}
+        {% if messages %}
+        {% for category, message in messages %}
+        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+        {% endif %}
         {% endwith %}
-        
+
         {% block content %}{% endblock %}
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     {% block scripts %}{% endblock %}
 </body>
+
 </html>

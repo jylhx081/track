@@ -56,6 +56,11 @@ def update_info():
         if weight:
             user.weight = float(weight)
 
+        # 更新运动频率
+        exercise_frequency = request.form.get('exercise_frequency')
+        if exercise_frequency:
+            user.exercise_frequency = exercise_frequency
+
         # 重新计算BMI
         if user.height and user.weight:
             user.bmi = round(user.weight / ((user.height / 100) ** 2), 2)
@@ -70,7 +75,7 @@ def update_info():
             else:
                 user.bmi_category = '肥胖'
 
-        # 重新计算BMR（基础代谢率）并根据运动频率调整
+        # 重新计算BMR（基础代谢率），仅代表静息消耗
         if user.age and user.gender and user.height and user.weight:
             if user.gender == '男' or user.gender == 'Male':
                 # 男性：BMR = 10 * 体重(kg) + 6.25 * 身高(cm) - 5 * 年龄 + 5
@@ -79,18 +84,8 @@ def update_info():
                 # 女性：BMR = 10 * 体重(kg) + 6.25 * 身高(cm) - 5 * 年龄 - 161
                 base_bmr = 10 * user.weight + 6.25 * user.height - 5 * user.age - 161
 
-            # 根据运动频率调整BMR
-            exercise_factor = 1.2  # 默认久坐不动
-            if user.exercise_frequency == '每周1-2次':
-                exercise_factor = 1.375
-            elif user.exercise_frequency == '每周3-4次':
-                exercise_factor = 1.55
-            elif user.exercise_frequency == '每周5-6次':
-                exercise_factor = 1.725
-            elif user.exercise_frequency == '每天':
-                exercise_factor = 1.9
-
-            user.bmr = round(base_bmr * exercise_factor)
+            # BMR 只保存静息代谢，不再乘运动系数
+            user.bmr = round(base_bmr)
 
         db.session.commit()
         flash('个人信息更新成功！', 'success')
@@ -153,7 +148,7 @@ def update_exercise_habits():
         if exercise_level:
             user.exercise_level = exercise_level
 
-        # 重新计算BMR（基础代谢率）并根据运动频率调整
+        # 重新计算BMR（基础代谢率），仅代表静息消耗
         if user.age and user.gender and user.height and user.weight:
             if user.gender == '男' or user.gender == 'Male':
                 # 男性：BMR = 10 * 体重(kg) + 6.25 * 身高(cm) - 5 * 年龄 + 5
@@ -162,18 +157,8 @@ def update_exercise_habits():
                 # 女性：BMR = 10 * 体重(kg) + 6.25 * 身高(cm) - 5 * 年龄 - 161
                 base_bmr = 10 * user.weight + 6.25 * user.height - 5 * user.age - 161
 
-            # 根据运动频率调整BMR
-            exercise_factor = 1.2  # 默认久坐不动
-            if user.exercise_frequency == '每周1-2次':
-                exercise_factor = 1.375
-            elif user.exercise_frequency == '每周3-4次':
-                exercise_factor = 1.55
-            elif user.exercise_frequency == '每周5-6次':
-                exercise_factor = 1.725
-            elif user.exercise_frequency == '每天':
-                exercise_factor = 1.9
-
-            user.bmr = round(base_bmr * exercise_factor)
+            # BMR 只保存静息代谢，不再乘运动系数
+            user.bmr = round(base_bmr)
 
         db.session.commit()
         flash('运动习惯更新成功！', 'success')
